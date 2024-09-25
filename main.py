@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from routers.temlate_routers import router as templates_router
+from routers.template_routers import router as templates_router
 from routers.ws_routers import router as ws_routers
 
 

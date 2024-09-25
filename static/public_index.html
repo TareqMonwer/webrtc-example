@@ -4,6 +4,13 @@
 <head>
   <meta charset="utf-8" />
   <title>Simple P2P example</title>
+
+  <style>
+    #stream-area {
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
 </head>
 
 <body>
@@ -16,11 +23,23 @@
   <button id="hangupButton" onclick="hangup();" disabled>Hang Up</button>
   <hr />
 
-  <h3>Local Video</h3>
-  <video id="localVideo" width="640" height="480" autoplay muted></video>
-
-  <h3>Remote Video</h3>
-  <video id="remoteVideo" width="640" height="480" autoplay></video>
+  <div id="stream-area">
+    <div>
+      <h3>Local Video</h3>
+      <video id="localVideo" width="640" height="480" autoplay muted></video>
+      <br>
+      <button onclick="toggleLocalMic()">Toggle Local Mic</button>
+      <button onclick="toggleLocalCamera()">Toggle Local Camera</button>
+    </div>
+    
+    <div>
+      <h3>Remote Video</h3>
+      <video id="remoteVideo" width="640" height="480" autoplay></video>
+      <br />
+      <button id="remoteMicStatus" onclick="toggleRemoteMic()">Toggle Remote Mic</button>
+      <button id="remoteCameraStatus" onclick="toggleRemoteCamera()">Toggle Remote Camera</button>
+    </div>
+  </div>
 
   <script src="{{ url_for('static', path='/js/main.js') }}"></script>
 </body>

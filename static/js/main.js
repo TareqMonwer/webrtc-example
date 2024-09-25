@@ -2,6 +2,8 @@ const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
+const toggleCameraButton = document.getElementById('toggleCameraButton');
+const toggleMicButton = document.getElementById('toggleMicButton');
 const socket = new WebSocket('http://localhost:8000/ws');
 
 let peerConnection;
@@ -42,6 +44,13 @@ socket.onmessage = async ({ data }) => {
         break;
       case 'iceCandidate':
         await peerConnection.addIceCandidate(jsonMessage.data.candidate);
+        break;
+      case 'remoteMicStatus':
+        updateRemoteMicUI(jsonMessage.data.enabled);
+        break;
+
+      case 'remoteCameraStatus':
+        updateRemoteCameraUI(jsonMessage.data.enabled);
         break;
       default: console.warn('unknown action', jsonMessage.action);
     }
@@ -155,6 +164,60 @@ const initializePeerConnection = async (mediaTracks) => {
     peerConnection.addTrack(track);
   }
 };
+
+const toggleLocalMic = () => {
+  const audioTrack = localMediaStream.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+    console.log('Local Mic ' + (audioTrack.enabled ? 'unmuted' : 'muted'));
+
+    // Notify the remote peer about the mic toggle for UI update
+    sendSocketMessage('remoteMicStatus', { enabled: audioTrack.enabled });
+  }
+};
+
+const toggleLocalCamera = () => {
+  const videoTrack = localMediaStream.getVideoTracks()[0];
+  if (videoTrack) {
+    videoTrack.enabled = !videoTrack.enabled;
+    console.log('Local Camera ' + (videoTrack.enabled ? 'started' : 'stopped'));
+
+    // Notify the remote peer about the camera toggle for UI update
+    sendSocketMessage('remoteCameraStatus', { enabled: videoTrack.enabled });
+  }
+};
+
+const toggleRemoteMic = (enabled) => {
+  const audioTrack = remoteMediaStream.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = enabled;
+    console.log('Remote Mic ' + (audioTrack.enabled ? 'unmuted' : 'muted'));
+  }
+};
+
+const toggleRemoteCamera = (enabled) => {
+  const videoTrack = remoteMediaStream.getVideoTracks()[0];
+  if (videoTrack) {
+    videoTrack.enabled = enabled;
+    console.log('Remote Camera ' + (videoTrack.enabled ? 'started' : 'stopped'));
+  }
+};
+
+const updateRemoteMicUI = (enabled) => {
+  const micStatusElement = document.getElementById('remoteMicStatus');
+  if (micStatusElement) {
+    micStatusElement.textContent = enabled ? 'Remote Mic: Unmuted' : 'Remote Mic: Muted';
+  }
+};
+
+const updateRemoteCameraUI = (enabled) => {
+  const cameraStatusElement = document.getElementById('remoteCameraStatus');
+  if (cameraStatusElement) {
+    cameraStatusElement.textContent = enabled ? 'Remote Camera: On' : 'Remote Camera: Off';
+  }
+};
+
+
 
 hangupButton.disabled = false;
 
