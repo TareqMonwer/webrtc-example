@@ -5,43 +5,83 @@
   <meta charset="utf-8" />
   <title>Simple P2P example</title>
 
-  <style>
-    #stream-area {
-      display: flex;
-      justify-content: space-between;
-    }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <!-- <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}"> -->
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 
 <body>
-  <h1>Simple P2P Example</h1>
-  <hr />
-  <button onclick="start();">Start</button><br />
-  <b>Local Id: <span id="localId" /></b><br />
-  <input type="text" id="callId" placeholder="Enter remote peer id" />
-  <button id="callButton" onclick="call();">Call</button>
-  <button id="hangupButton" onclick="hangup();" disabled>Hang Up</button>
-  <hr />
+  <div id="initial-view" class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-6">
+          <button type="button" id="start-call-btn" class="btn btn-success">
+            <i class="bi bi-telephone-plus-fill"></i> &nbsp; Start call
+          </button>
+        </div>
+      </div>
 
-  <div id="stream-area">
-    <div>
-      <h3>Local Video</h3>
-      <video id="localVideo" width="640" height="480" autoplay muted></video>
-      <br>
-      <button onclick="toggleLocalMic()">Toggle Local Mic</button>
-      <button onclick="toggleLocalCamera()">Toggle Local Camera</button>
-    </div>
-    
-    <div>
-      <h3>Remote Video</h3>
-      <video id="remoteVideo" width="640" height="480" autoplay></video>
-      <br />
-      <button id="remoteMicStatus" onclick="toggleRemoteMic()">Toggle Remote Mic</button>
-      <button id="remoteCameraStatus" onclick="toggleRemoteCamera()">Toggle Remote Camera</button>
+      <div class="row">
+        <div class="col-6">
+          <div class="mt-2 d-flex">
+            <input id="invite-code" class="form-control w-50" type="text" placeholder="Invitation code"
+              aria-label="Enter invite code">
+            <button type="button" class="btn btn-secondary mx-2" id="join-call-btn">
+              <i class="bi bi-telephone-outbound-fill"></i> &nbsp; Join call
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+  <div id="call-lobby" class="d-none py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-5 col-sm-12">
+          <div class="input-group mb-3">
+            <span class="input-group-text" id="copy">
+              <b><i class="bi bi-copy"></i> &nbsp; Invitation Code</b>
+            </span>
+            <input type="text" class="form-control" placeholder="9ACBA_DBDA-4D4D" aria-label="Invitation Code"
+              aria-describedby="Invitation Code">
+          </div>
+        </div>
+      </div>
+
+      <!-- video screens -->
+      <div class="row">
+        <div class="col-md-6 col-sm-12">
+          <video id="host-video-frame" autoplay muted></video>
+          <div id="host-info">
+            <p class="my-1">
+              <b>Tarek Monwer</b>
+            </p>
+
+            <div id="host-media-controls">
+              <button type="button" class="btn btn-secondary" id="host-mic-control-btn">
+                <i class="bi bi-mic-fill"></i>
+              </button>
+              <button type="button" class="btn btn-secondary" id="host-cam-control-btn">
+                <i class="bi bi-camera-video-fill"></i>
+              </button>
+              <button type="button" class="btn btn-danger" id="host-end-call-btn">
+                <i class="bi bi-telephone-minus-fill"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+    crossorigin="anonymous"></script>
+  <!-- <script src="{{ url_for('static', path='/js/main.js') }}"></script> -->
+  <script src="./js/main.js"></script>
 </body>
 
 </html>

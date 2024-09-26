@@ -1,132 +1,106 @@
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
-const callButton = document.getElementById('callButton');
-const hangupButton = document.getElementById('hangupButton');
-const toggleCameraButton = document.getElementById('toggleCameraButton');
-const toggleMicButton = document.getElementById('toggleMicButton');
-const socket = new WebSocket('http://localhost:8000/ws');
+const initialView = document.getElementById('initial-view');
+const startCallButton = document.getElementById('start-call-btn');
+const joinCallButton = document.getElementById('join-call-btn');
+const inviteCode = document.getElementById('invite-code').value;
+const hostMicControlBtn = document.getElementById('host-mic-control-btn');
+const hostCamControlBtn = document.getElementById('host-cam-control-btn');
+const hostEndCallButton = document.getElementById('host-end-call-btn');
 
-let peerConnection;
-let localMediaStream;
-let remoteId;
-const remoteMediaStream = new MediaStream();
+const callLobbyEl = document.getElementById("call-lobby");
+const hostVideoFrameEl = document.getElementById("host-video-frame");
 
-socket.onopen = () => {
-  console.log('socket::open');
-};
+let sessionStarted = false;
+let micFillIconClasses = "bi bi-mic-fill";
+let micFillMuteIconClasses = "bi bi-mic-mute-fill";
+let videoFillIconClasses = "bi bi-camera-video-fill";
+let videoFillOffIconClasses = "bi bi-camera-video-off-fill";
 
-socket.onmessage = async ({ data }) => {
+let hostMediaStream;
+
+
+/***** EVENT METHODS *****/
+const startEventHandler = async(event) => {
+  sessionStarted = true;
+
   try {
-    const jsonMessage = JSON.parse(data);
-
-    console.log('action', jsonMessage.action);
-    switch (jsonMessage.action) {
-      case 'start':
-        console.log('start', jsonMessage.id);
-        callButton.disabled = false;
-
-        document.getElementById('localId').innerHTML = jsonMessage.id;
-        break;
-      case 'offer':
-        remoteId = jsonMessage.data.remoteId;
-        delete jsonMessage.data.remoteId;
-
-        await initializePeerConnection(localMediaStream.getTracks());
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonMessage.data.offer));
-
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-
-        sendSocketMessage('answer', { remoteId, answer }); 
-        break;
-      case 'answer':
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonMessage.data.answer));
-        break;
-      case 'iceCandidate':
-        await peerConnection.addIceCandidate(jsonMessage.data.candidate);
-        break;
-      case 'remoteMicStatus':
-        updateRemoteMicUI(jsonMessage.data.enabled);
-        break;
-
-      case 'remoteCameraStatus':
-        updateRemoteCameraUI(jsonMessage.data.enabled);
-        break;
-      default: console.warn('unknown action', jsonMessage.action);
-    }
-  } catch (error) {
-    console.error('failed to handle socket message', error);
-  }
-};
-
-socket.onerror = (error) => {
-  console.error('socket::error', error);
-};
-
-socket.onclose = () => {
-  console.log('socket::close');
-  stop();
-};
-
-const sendSocketMessage = (action, data) => {
-  const message = { action, data };
-  socket.send(JSON.stringify(message));
-};
-
-const start = async () => {
-  try {
-    localMediaStream = await getLocalMediaStream(); 
-
-    sendSocketMessage('start');
+    hostMediaStream = await getHostMediaStream(); 
   } catch (error) {
     console.error('failed to start stream', error);
   }
-};
 
+  updateUiBySessionStart();
+}
 
-const call = async () => {
-  try {
-    remoteId = document.getElementById('callId').value;
+const hostMicControlClickHandler = (event) => {
+  if (sessionStarted && hostMediaStream) {
+    const hostAudioTrack = hostMediaStream.getAudioTracks()[0];
 
-    if (!remoteId) {
-      alert('Please enter a remote id');
+    if (hostAudioTrack) {
+      hostAudioTrack.enabled = !hostAudioTrack.enabled;
 
-      return;
+      if (hostAudioTrack.enabled) {
+        hostMicControlBtn.getElementsByTagName("i")[0].className = micFillIconClasses;
+        hostMicControlBtn.classList.remove("opacity-50");
+      } else {
+        hostMicControlBtn.getElementsByTagName("i")[0].className = micFillMuteIconClasses;
+        hostMicControlBtn.classList.add("opacity-50");
+      }
     }
-
-    console.log('call: ', remoteId);
-    localMediaStream = await getLocalMediaStream();
-    await initializePeerConnection(localMediaStream.getTracks());
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    sendSocketMessage('offer', { offer, remoteId });
-  } catch (error) {
-    console.error('failed to initialize call', error);
   }
-};
+}
 
-const hangup = () => socket.close();
+const hostCamControlClickHandler = async (event) => {
+  if (sessionStarted && hostMediaStream) {
+    const hostVideoTrack = hostMediaStream.getVideoTracks()[0];
 
-const stop = () => {
-  if (!localVideo.srcObject) return;
+    if (hostVideoTrack) {
+      hostVideoTrack.enabled = !hostVideoTrack.enabled;
 
-  for (const track of localVideo.srcObject.getTracks()) {
-    track.stop();
+      if (hostVideoTrack.enabled) {
+        // start camera again
+        await getHostVideoStream();
+
+        hostCamControlBtn.getElementsByTagName("i")[0].className = videoFillIconClasses;
+        hostCamControlBtn.classList.remove("opacity-50");
+      } else {
+        // stop camera
+        hostVideoTrack.stop();
+
+        hostCamControlBtn.getElementsByTagName("i")[0].className = videoFillOffIconClasses;
+        hostCamControlBtn.classList.add("opacity-50");
+      }
+    }
   }
+}
 
-  peerConnection.close();
-  callButton.disabled = true;
-  hangupButton.disabled = true;
-  localVideo.srcObject = undefined;
-  remoteVideo.srcObject = undefined;
-};
+const hostEndCallClickHandler = event => {
+  if (sessionStarted && hostMediaStream) {
+    hostMediaStream.getTracks().forEach((track) => {
+        track.stop();
+    });
 
-const getLocalMediaStream = async () => {
+    // reset host video frame states
+    hostCamControlBtn.getElementsByTagName("i")[0].className = videoFillIconClasses;
+    hostCamControlBtn.classList.remove("opacity-50");
+
+    callLobbyEl.classList.add("d-none");
+    initialView.classList.remove("d-none");
+  }
+}
+
+
+
+/**** UTILITY METHODS ****/
+const updateUiBySessionStart = () => {
+  initialView.classList.add("d-none");
+  callLobbyEl.classList.remove("d-none");
+}
+
+const getHostMediaStream = async () => {
   try {
     const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    console.log('got local media stream');
 
-    localVideo.srcObject = mediaStream;
+    hostVideoFrameEl.srcObject = mediaStream;
 
     return mediaStream;
   } catch (error) {
@@ -134,90 +108,22 @@ const getLocalMediaStream = async () => {
   }
 };
 
-const initializePeerConnection = async (mediaTracks) => {
-  const config = { iceServers: [{ urls: [ 'stun:stun1.l.google.com:19302' ] } ] };
-  peerConnection = new RTCPeerConnection(config);
+const getHostVideoStream = async () => {
+  try {
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-  peerConnection.onicecandidate = ({ candidate }) => {
-    if (!candidate) return;
+    hostVideoFrameEl.srcObject = videoStream;
 
-    console.log('peerConnection::icecandidate', candidate);
-    console.log('remote', remoteId);
-    sendSocketMessage('iceCandidate', { remoteId, candidate });
-  };
-
-  peerConnection.oniceconnectionstatechange = () => {
-  console.log('peerConnection::iceconnectionstatechange newState=', peerConnection.iceConnectionState);
-    if (peerConnection.iceConnectionState === 'disconnected') {
-      alert('Connection has been closed stopping...');
-      socket.close();
-    }
-  };
-
-  peerConnection.ontrack = ({ track }) => {
-    console.log('peerConnection::track', track);
-    remoteMediaStream.addTrack(track);
-    remoteVideo.srcObject = remoteMediaStream;
-  };
-
-  for (const track of mediaTracks) {
-    peerConnection.addTrack(track);
-  }
-};
-
-const toggleLocalMic = () => {
-  const audioTrack = localMediaStream.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
-    console.log('Local Mic ' + (audioTrack.enabled ? 'unmuted' : 'muted'));
-
-    // Notify the remote peer about the mic toggle for UI update
-    sendSocketMessage('remoteMicStatus', { enabled: audioTrack.enabled });
-  }
-};
-
-const toggleLocalCamera = () => {
-  const videoTrack = localMediaStream.getVideoTracks()[0];
-  if (videoTrack) {
-    videoTrack.enabled = !videoTrack.enabled;
-    console.log('Local Camera ' + (videoTrack.enabled ? 'started' : 'stopped'));
-
-    // Notify the remote peer about the camera toggle for UI update
-    sendSocketMessage('remoteCameraStatus', { enabled: videoTrack.enabled });
-  }
-};
-
-const toggleRemoteMic = (enabled) => {
-  const audioTrack = remoteMediaStream.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = enabled;
-    console.log('Remote Mic ' + (audioTrack.enabled ? 'unmuted' : 'muted'));
-  }
-};
-
-const toggleRemoteCamera = (enabled) => {
-  const videoTrack = remoteMediaStream.getVideoTracks()[0];
-  if (videoTrack) {
-    videoTrack.enabled = enabled;
-    console.log('Remote Camera ' + (videoTrack.enabled ? 'started' : 'stopped'));
-  }
-};
-
-const updateRemoteMicUI = (enabled) => {
-  const micStatusElement = document.getElementById('remoteMicStatus');
-  if (micStatusElement) {
-    micStatusElement.textContent = enabled ? 'Remote Mic: Unmuted' : 'Remote Mic: Muted';
-  }
-};
-
-const updateRemoteCameraUI = (enabled) => {
-  const cameraStatusElement = document.getElementById('remoteCameraStatus');
-  if (cameraStatusElement) {
-    cameraStatusElement.textContent = enabled ? 'Remote Camera: On' : 'Remote Camera: Off';
+    return videoStream;
+  } catch (error) {
+    console.error('failed to get local media stream', error);
   }
 };
 
 
 
-hangupButton.disabled = false;
-
+/****** REGISTER EVENTs ******/
+startCallButton.addEventListener('click', startEventHandler);
+hostMicControlBtn.addEventListener('click', hostMicControlClickHandler);
+hostCamControlBtn.addEventListener('click', hostCamControlClickHandler);
+hostEndCallButton.addEventListener('click', hostEndCallClickHandler);
